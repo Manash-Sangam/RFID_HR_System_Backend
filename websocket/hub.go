@@ -67,7 +67,7 @@ func (h *Hub) Run() {
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Failed to upgrade connection:", err)
 		return
 	}
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), id: "ESP8266-01"}
@@ -85,6 +85,7 @@ func (c *Client) readPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
+			fmt.Println("Error reading message:", err)
 			break
 		}
 		var data models.RFIDData
@@ -115,7 +116,11 @@ func (c *Client) writePump() {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			c.conn.WriteMessage(websocket.TextMessage, message)
+			err := c.conn.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				fmt.Println("Error writing message:", err)
+				return
+			}
 		}
 	}
 }

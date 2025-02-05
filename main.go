@@ -2,16 +2,30 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
+	"os"
 	"rfid_backend/db"
 	"rfid_backend/handlers"
 	"rfid_backend/websocket"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	// Initialize the database connection
-	db.InitDB("root:manash@tcp(127.0.0.1:3306)/rfid_backend")
+	dbConnectionString := os.Getenv("DB_CONNECTION_STRING")
+	if dbConnectionString == "" {
+		log.Fatal("DB_CONNECTION_STRING environment variable is required")
+	}
+	db.InitDB(dbConnectionString)
 
 	// Initialize WebSocket hub
 	websocket.HubInstance = websocket.NewHub()
@@ -25,18 +39,17 @@ func main() {
 
 	ip, err := getLocalIP()
 	if err != nil {
-		fmt.Println("Error getting local IP address:", err)
-	} else {
-		fmt.Printf("Starting server on http://%s:9191\n", ip)
+		log.Fatalf("Error getting local IP address: %v", err)
 	}
+	fmt.Printf("Starting server on http://%s:9191\n", ip)
 
-	http.ListenAndServe(":9191", nil)
+	log.Fatal(http.ListenAndServe(":9191", nil))
 }
 
 func getLocalIP() (string, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get local IP address: %w", err)
 	}
 	defer conn.Close()
 
